@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirm Subscription Payment</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; background: #0f172a; color: #e2e8f0; }
+    h1 { margin-bottom: 12px; }
+    form { max-width: 460px; background: #111827; padding: 20px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    label { display: block; margin: 12px 0 6px; font-size: 14px; color: #cbd5e1; }
+    input[type="email"], input[type="text"] { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0b1220; color: #e2e8f0; }
+    #card-element { padding: 12px; border-radius: 6px; border: 1px solid #334155; background: white; }
+    button { margin-top: 16px; width: 100%; padding: 12px; border: none; border-radius: 8px; background: linear-gradient(135deg, #2563eb, #0ea5e9); color: #f8fafc; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    #status { margin-top: 16px; padding: 12px; border-radius: 8px; background: #0b1220; min-height: 80px; white-space: pre-line; }
+    a { color: #22d3ee; }
+  </style>
+</head>
+<body>
+  <h1>Confirm Subscription Payment</h1>
+  <p>Use this page when a subscription is in the <strong>default_incomplete</strong> state to complete payment and activate it.</p>
+  <form id="confirm-form" style="color:white">
+    <label for="subscriptionId">Subscription ID</label>
+    <input id="subscriptionId" name="subscriptionId" type="text" placeholder="sub_123" required />
+
+    <label for="email">Email (optional, helps lookup)</label>
+    <input id="email" name="email" type="email" placeholder="user@example.com" />
+
+    <label>Card</label>
+    <div id="card-element"></div>
+
+    <button id="submit-btn" type="submit">Confirm Payment</button>
+  </form>
+
+  <div id="status"></div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const form = document.getElementById('confirm-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    let stripe;
+    let card;
+
+    async function loadStripe() {
+      const res = await fetch('/api/config/stripe-publishable-key');
+      if (!res.ok) throw new Error('Could not load publishable key');
+      const data = await res.json();
+      stripe = Stripe(data.publishableKey);
+      const elements = stripe.elements();
+      card = elements.create('card');
+      card.mount('#card-element');
+    }
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function setLoading(isLoading) {
+      submitBtn.disabled = isLoading;
+      submitBtn.textContent = isLoading ? 'Working…' : 'Confirm Payment';
+    }
+
+    async function confirmIfRequired(clientSecret) {
+      const result = await stripe.confirmCardPayment(clientSecret);
+      if (result.error) {
+        throw new Error(result.error.message || '3DS confirmation failed');
+      }
+      return result.paymentIntent;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setLoading(true);
+      setStatus('Starting confirmation…');
+
+      const subscriptionId = document.getElementById('subscriptionId').value.trim();
+      const email = document.getElementById('email').value.trim();
+
+      const pmResult = await stripe.createPaymentMethod({
+        type: 'card',
+        card,
+        billing_details: email ? { email } : undefined
+      });
+
+      if (pmResult.error) {
+        setStatus(pmResult.error.message || 'Payment method error');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const payRes = await fetch('/api/stripe/subscription/pay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscriptionId,
+            email: email || null,
+            paymentMethodId: pmResult.paymentMethod.id
+          })
+        });
+
+        const data = await payRes.json();
+        if (!payRes.ok) {
+          setStatus(data?.error || 'Payment confirmation failed');
+          setLoading(false);
+          return;
+        }
+
+        const infoLines = [
+          `Stripe subscription status: ${data.stripeSubscriptionStatus || data.StripeSubscriptionStatus || 'unknown'}`,
+          `PaymentIntent status: ${data.paymentIntentStatus || data.PaymentIntentStatus || 'unknown'}`,
+          `Subscription Id: ${data.stripeSubscriptionId || data.StripeSubscriptionId || subscriptionId}`
+        ];
+
+        const nextAction = data.nextAction || data.NextAction;
+        const clientSecret = data.clientSecret || data.ClientSecret;
+
+        if ((nextAction === 'use_stripe_sdk' || (data.paymentIntentStatus || data.PaymentIntentStatus) === 'requires_action') && clientSecret) {
+          setStatus(infoLines.concat('3DS required, opening Stripe modal…').join('\n'));
+          const confirmed = await confirmIfRequired(clientSecret);
+          infoLines.push(`Final PaymentIntent status: ${confirmed.status}`);
+        }
+
+        setStatus(infoLines.join('\n'));
+      } catch (err) {
+        setStatus(err.message || 'Unexpected error');
+      }
+
+      setLoading(false);
+    });
+
+    loadStripe().catch((err) => setStatus(err.message));
+  </script>
+</body>
+</html>

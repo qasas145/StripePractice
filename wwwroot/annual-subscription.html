@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>اشتراك سنوي مع Proration</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="email"],
+        input[type="text"],
+        input[type="date"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        #card-element {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .info-box {
+            background: #f0f4ff;
+            border-right: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h3 {
+            color: #667eea;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .info-value {
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .highlight {
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        #status.show {
+            display: block;
+        }
+
+        #status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        #status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        #status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+
+        .calculation-result {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .calculation-result.show {
+            display: block;
+        }
+
+        .result-title {
+            font-size: 18px;
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .optional-tag {
+            background: #ffd700;
+            color: #333;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-right: 5px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 اشتراك سنوي مع Proration</h1>
+        <p class="subtitle">ادفع فقط عن الفترة المتبقية من السنة، ثم يبدأ الاشتراك الكامل تلقائياً</p>
+
+        <form id="annual-subscription-form">
+            <div class="form-group">
+                <label for="email">📧 البريد الإلكتروني</label>
+                <input id="email" type="email" placeholder="user@example.com" required />
+            </div>
+
+            <div class="form-group">
+                <label for="priceId">🏷️ معرف السعر (Price ID)</label>
+                <input id="priceId" type="text" placeholder="price_..." required />
+                <div class="help-text">يجب أن يكون سعراً سنوياً (yearly أو 12 شهر)</div>
+            </div>
+
+            <div class="form-group">
+                <label for="annualAmount">💰 السعر السنوي (بالدولار)</label>
+                <input id="annualAmount" type="number" placeholder="1200" min="1" step="0.01" required />
+                <div class="help-text">مثال: 1200 دولار = اشتراك سنوي</div>
+            </div>
+
+            <div class="form-group">
+                <label for="subscriptionStartDate">📅 تاريخ بداية الاشتراك</label>
+                <input id="subscriptionStartDate" type="date" required />
+                <div class="help-text">سيتم حساب المبلغ المطلوب دفعه بناءً على هذا التاريخ</div>
+            </div>
+
+            <div class="form-group">
+                <label for="futureBillingDate">
+                    <span class="optional-tag">اختياري</span>
+                    🗓️ تاريخ بداية الفوترة الكاملة
+                </label>
+                <input id="futureBillingDate" type="date" />
+                <div class="help-text">إذا تركته فارغاً، سيبدأ الاشتراك الكامل بعد سنة من تاريخ البداية + الأيام الإضافية</div>
+            </div>
+
+            <div class="form-group">
+                <label for="card">💳 بطاقة الدفع</label>
+                <div id="card-element"></div>
+            </div>
+
+            <button type="button" id="calculate-btn">🧮 حساب المبلغ المستحق</button>
+
+            <div id="calculation-result" class="calculation-result">
+                <div class="result-title">📊 نتيجة الحساب</div>
+                <div class="info-box">
+                    <div class="info-item">
+                        <span class="info-label">السعر السنوي الكامل</span>
+                        <span class="info-value" id="calc-annual">$0.00</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">المبلغ المستحق الآن (Prorated)</span>
+                        <span class="info-value highlight" id="calc-prorated">$0.00</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">عدد الأيام المتبقية</span>
+                        <span class="info-value" id="calc-days">0 يوم</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">الأشهر القابلة للفوترة</span>
+                        <span class="info-value" id="calc-months">0 شهر</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">الأيام الإضافية</span>
+                        <span class="info-value" id="calc-extra-days">0 يوم</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">تاريخ بداية الاشتراك الكامل</span>
+                        <span class="info-value" id="calc-billing-date">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" id="submit-btn">✅ إنشاء الاشتراك والدفع</button>
+        </form>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const form = document.getElementById('annual-subscription-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const calculateBtn = document.getElementById('calculate-btn');
+        const calculationResult = document.getElementById('calculation-result');
+
+        let stripe;
+        let card;
+
+        // تعيين التاريخ الافتراضي إلى اليوم
+        document.getElementById('subscriptionStartDate').valueAsDate = new Date();
+
+        async function loadStripe() {
+            try {
+                const res = await fetch('/api/config/stripe-publishable-key');
+                if (!res.ok) {
+                    throw new Error('Could not load publishable key');
+                }
+                const data = await res.json();
+                stripe = Stripe(data.publishableKey);
+                const elements = stripe.elements();
+                card = elements.create('card', {
+                    style: {
+                        base: {
+                            fontSize: '16px',
+                            color: '#32325d',
+                            fontFamily: '"Segoe UI", sans-serif',
+                            '::placeholder': {
+                                color: '#aab7c4'
+                            }
+                        }
+                    }
+                });
+                card.mount('#card-element');
+            } catch (err) {
+                setStatus(err.message, 'error');
+            }
+        }
+
+        function setStatus(message, type = 'loading') {
+            statusEl.textContent = message;
+            statusEl.className = `show ${type}`;
+        }
+
+        function setLoading(isLoading) {
+            submitBtn.disabled = isLoading;
+            calculateBtn.disabled = isLoading;
+            submitBtn.textContent = isLoading ? '⏳ جاري المعالجة...' : '✅ إنشاء الاشتراك والدفع';
+        }
+
+        // حساب المبلغ المستحق
+        calculateBtn.addEventListener('click', async () => {
+            const annualAmount = parseFloat(document.getElementById('annualAmount').value);
+            const startDate = document.getElementById('subscriptionStartDate').value;
+            const futureBillingDate = document.getElementById('futureBillingDate').value;
+
+            if (!annualAmount || !startDate) {
+                setStatus('⚠️ يرجى إدخال السعر السنوي وتاريخ البداية', 'error');
+                return;
+            }
+
+            try {
+                setLoading(true);
+                setStatus('🧮 جاري الحساب...', 'loading');
+
+                // حساب المبلغ المقسّم
+                const annualAmountInCents = Math.round(annualAmount * 100);
+                const calcRes = await fetch(
+                    `/api/stripe/calculate-prorated?annualPrice=${annualAmountInCents}&startDate=${startDate}`
+                );
+
+                if (!calcRes.ok) {
+                    throw new Error('فشل في حساب المبلغ');
+                }
+
+                const calcData = await calcRes.json();
+                
+                // حساب تاريخ الفوترة المستقبلية
+                const startDateObj = new Date(startDate);
+                const anniversaryDate = new Date(startDateObj);
+                anniversaryDate.setFullYear(anniversaryDate.getFullYear() + 1);
+                
+                const finalBillingDate = futureBillingDate 
+                    ? new Date(futureBillingDate) 
+                    : anniversaryDate;
+                
+                // إضافة الأيام الإضافية
+                finalBillingDate.setDate(finalBillingDate.getDate() + (calcData.extraDays || 0));
+
+                // عرض النتائج
+                document.getElementById('calc-annual').textContent = `$${annualAmount.toFixed(2)}`;
+                document.getElementById('calc-prorated').textContent = `$${calcData.proratedAmount.toFixed(2)}`;
+                document.getElementById('calc-days').textContent = `${calcData.daysRemaining} يوم`;
+                document.getElementById('calc-months').textContent = `${calcData.billableMonths} شهر`;
+                document.getElementById('calc-extra-days').textContent = `${calcData.extraDays} يوم`;
+                document.getElementById('calc-billing-date').textContent = finalBillingDate.toLocaleDateString('ar-EG');
+
+                calculationResult.classList.add('show');
+                setStatus('✅ تم الحساب بنجاح! يمكنك الآن إنشاء الاشتراك', 'success');
+            } catch (err) {
+                setStatus(`❌ خطأ: ${err.message}`, 'error');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // إنشاء الاشتراك
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading(true);
+            setStatus('🚀 جاري إنشاء الاشتراك...', 'loading');
+
+            try {
+                const email = document.getElementById('email').value.trim();
+                const priceId = document.getElementById('priceId').value.trim();
+                const annualAmount = parseFloat(document.getElementById('annualAmount').value);
+                const subscriptionStartDate = document.getElementById('subscriptionStartDate').value;
+                const futureBillingDate = document.getElementById('futureBillingDate').value;
+
+                // إنشاء طريقة الدفع
+                const pmResult = await stripe.createPaymentMethod({
+                    type: 'card',
+                    card,
+                    billing_details: { email }
+                });
+
+                if (pmResult.error) {
+                    throw new Error(pmResult.error.message || 'خطأ في طريقة الدفع');
+                }
+
+                // إرسال الطلب للـ API
+                const body = {
+                    email,
+                    priceId,
+                    paymentMethodId: pmResult.paymentMethod.id,
+                    annualPriceAmount: Math.round(annualAmount * 100),
+                    subscriptionStartDate: subscriptionStartDate || null,
+                    futureBillingStartDate: futureBillingDate || null
+                };
+
+                const subRes = await fetch('/api/stripe/subscription/annual-with-proration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const subData = await subRes.json();
+                console.log('Response:', subData);
+
+                if (!subRes.ok) {
+                    throw new Error(subData?.error || subData?.Error || 'فشل في إنشاء الاشتراك');
+                }
+
+                // عرض النتيجة
+                const successMessage = `
+✅ تم إنشاء الاشتراك بنجاح!
+
+📧 البريد: ${subData.email}
+🆔 معرف الاشتراك: ${subData.stripeSubscriptionId}
+📊 الحالة: ${subData.stripeSubscriptionStatus}
+
+💰 المبلغ المدفوع الآن: $${subData.proratedAmount.toFixed(2)}
+💵 السعر السنوي الكامل: $${subData.annualAmount.toFixed(2)}
+📅 تاريخ بداية الاشتراك: ${subData.subscriptionStartDate}
+🗓️ التجديد التالي: ${subData.nextRenewalDate}
+
+${subData.message}
+                `.trim();
+
+                setStatus(successMessage, 'success');
+                
+                // إعادة تعيين النموذج
+                form.reset();
+                card.clear();
+                calculationResult.classList.remove('show');
+                document.getElementById('subscriptionStartDate').valueAsDate = new Date();
+
+            } catch (err) {
+                setStatus(`❌ خطأ: ${err.message}`, 'error');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // تحميل Stripe عند تحميل الصفحة
+        loadStripe();
+    </script>
+</body>
+</html>

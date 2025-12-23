@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subscribe</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; background: #0f172a; color: #e2e8f0; }
+    h1 { margin-bottom: 12px; }
+    form { max-width: 420px; background: #111827; padding: 20px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    label { display: block; margin: 12px 0 6px; font-size: 14px; color: #cbd5e1; }
+    input[type="email"], input[type="text"] { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0b1220; color: #e2e8f0; }
+    #card-element { padding: 12px; border-radius: 6px; border: 10px solid #334155; background: white;}
+    button { margin-top: 16px; width: 100%; padding: 12px; border: none; border-radius: 8px; background: linear-gradient(135deg, #10b981, #059669); color: #f8fafc; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    #status { margin-top: 16px; padding: 12px; border-radius: 8px; background: #0b1220; min-height: 60px; }
+    a { color: #22d3ee; }
+  </style>
+</head>
+<body>
+  <h1>Create Subscription</h1>
+  <p>Use this test page to create a customer subscription with a card payment method.</p>
+  <form id="subscription-form" style="color:white">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" placeholder="user@example.com" required />
+
+    <label for="priceId">Price ID</label>
+    <input id="priceId" name="priceId" type="text" placeholder="price_123" required />
+
+    <label>Card</label>
+    <div id="card-element"></div>
+
+    <button id="submit-btn" type="submit">Subscribe</button>
+  </form>
+
+  <div id="status"></div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const form = document.getElementById('subscription-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    let stripe;
+    let card;
+
+    async function loadStripe() {
+      const res = await fetch('/api/config/stripe-publishable-key');
+      if (!res.ok) {
+        throw new Error('Could not load publishable key');
+      }
+      const data = await res.json();
+      stripe = Stripe(data.publishableKey);
+      const elements = stripe.elements();
+      card = elements.create('card');
+      card.mount('#card-element');
+    }
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function setLoading(isLoading) {
+      submitBtn.disabled = isLoading;
+      submitBtn.textContent = isLoading ? 'Working…' : 'Subscribe';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setLoading(true);
+      setStatus('Starting…');
+
+      const email = document.getElementById('email').value.trim();
+      const priceId = document.getElementById('priceId').value.trim();
+      const pmResult = await stripe.createPaymentMethod({
+        type: 'card',
+        card,
+        billing_details: { email }
+      });
+
+      if (pmResult.error) {
+        setStatus(pmResult.error.message || 'Payment method error');
+        setLoading(false);
+        return;
+      }
+
+      const body = {
+        email,
+        priceId,
+        paymentMethodId: pmResult.paymentMethod.id
+      };
+
+      const subRes = await fetch('/api/stripe/subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const subData = await subRes.json();
+      console.log(subData);
+      if (!subRes.ok) {
+        setStatus(subData?.error || 'Subscription failed');
+        setLoading(false);
+        return;
+      }
+
+      const stripeStatus = subData.stripeSubscriptionStatus || subData.StripeSubscriptionStatus;
+      const infoLines = [
+        `Subscription created. Stripe status: ${stripeStatus || 'unknown'}`,
+        `Subscription Id: ${subData.stripeSubscriptionId || subData.StripeSubscriptionId || 'n/a'}`
+      ];
+
+      if (stripeStatus && stripeStatus.toLowerCase().includes('incomplete')) {
+        infoLines.push('Status is incomplete. Go to /confirm.html with this Subscription Id to finish payment.');
+      }
+
+      setStatus(infoLines.join('\n'));
+      setLoading(false);
+    });
+
+    loadStripe().catch((err) => setStatus(err.message));
+  </script>
+</body>
+</html>

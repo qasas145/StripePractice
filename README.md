@@ -1,4 +1,4 @@
-# StripeUseExample
+# StripePractice
 
 > ⚠️ Work-in-progress and built for my own testing—some endpoints may be rough or experimental, so expect occasional oddities.
 

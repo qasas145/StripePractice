@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using StripeUseExample.Data;
-using StripeUseExample.Services;
+using StripePractice.Data;
+using StripePractice.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

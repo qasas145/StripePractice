@@ -1,7 +1,7 @@
-﻿using StripeUseExample.Data;
-using StripeUseExample.Models;
+﻿using StripePractice.Data;
+using StripePractice.Models;
 
-namespace StripeUseExample.Services
+namespace StripePractice.Services
 {
     public class UserService
     {

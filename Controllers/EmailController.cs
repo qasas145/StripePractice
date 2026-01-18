@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using StripeUseExample.Data;
-using StripeUseExample.Services;
+using StripePractice.Data;
+using StripePractice.Services;
 
-namespace StripeUseExample.Controllers
+namespace StripePractice.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

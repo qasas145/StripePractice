@@ -1,4 +1,4 @@
-namespace StripeUseExample.Uitls
+namespace StripePractice.Uitls
 {
     public class ProratedAmountCalculator
     {

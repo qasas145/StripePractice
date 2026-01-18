@@ -1,8 +1,8 @@
-﻿namespace StripeUseExample.Services
+﻿namespace StripePractice.Services
 {
     using Microsoft.Extensions.Configuration;
     using Stripe;
-    using StripeUseExample.Uitls;
+    using StripePractice.Uitls;
 
     public class StripeService
     {
@@ -435,17 +435,6 @@
             var (billableMonths, extraDays, backdateStart, billingAnchor) = 
                 ProratedAmountCalculator.CalcAddonProrationWithDates(now, mainSubEnd);
 
-            var discountPercent = Math.Round((12m - billableMonths) / 12m * 100m, 2);
-
-            var couponOptions = new CouponCreateOptions
-            {
-                PercentOff = discountPercent,
-                Duration = "once", 
-                Name = $"Prorated - {billableMonths} months remaining",
-            };
-
-            var couponService = new CouponService();
-            var coupon = couponService.Create(couponOptions);
             // إنشاء الاشتراك باستخدام backdateStart مباشرة
             var subscriptionOptions = new SubscriptionCreateOptions
             {
@@ -455,16 +444,12 @@
                 {
                     new SubscriptionItemOptions { Price = priceId }
                 },
+                //BillingCycleAnchor = billingAnchor.AddMonths(-10),
                 ProrationBehavior = "create_prorations",
                 CollectionMethod = "charge_automatically",
-                Discounts = new List<SubscriptionDiscountOptions>
-                {
-                    new SubscriptionDiscountOptions
-                    {
-                        Coupon = coupon.Id
-                    }
-                },
-                BackdateStartDate = backdateStart
+                BillingCycleAnchor = DateTime.SpecifyKind(now.AddMinutes(5), DateTimeKind.Utc),
+
+                BackdateStartDate = backdateStart.AddYears(-1)
             };
 
             var subscriptionService = new SubscriptionService();

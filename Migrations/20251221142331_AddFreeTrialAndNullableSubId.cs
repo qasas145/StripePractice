@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace StripeUseExample.Migrations
+namespace StripePractice.Migrations
 {
     /// <inheritdoc />
     public partial class AddFreeTrialAndNullableSubId : Migration

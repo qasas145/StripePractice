@@ -1,4 +1,4 @@
-namespace StripeUseExample
+namespace StripePractice
 {
     public class WeatherForecast
     {

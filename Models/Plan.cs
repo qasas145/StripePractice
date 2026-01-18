@@ -1,4 +1,4 @@
-﻿namespace StripeUseExample.Models
+﻿namespace StripePractice.Models
 {
     public class Plan
     {

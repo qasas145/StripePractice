@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using StripeUseExample.Models;
+using StripePractice.Models;
 
-namespace StripeUseExample.Data
+namespace StripePractice.Data
 {
     public class AppDbContext : DbContext
     {

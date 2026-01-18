@@ -1,12 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Stripe;
-using StripeUseExample.Data;
-using StripeUseExample.Models;
-using StripeUseExample.Services;
+using StripePractice.Data;
+using StripePractice.Models;
+using StripePractice.Services;
 using Newtonsoft.Json.Linq;
 
-namespace StripeUseExample.Controllers
+namespace StripePractice.Controllers
 {
     [Route("stripe/webhook")]
     [ApiController]

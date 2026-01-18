@@ -1,12 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using StripeUseExample.Data;
-using StripeUseExample.Models;
-using StripeUseExample.Services;
 using Stripe;
-using StripeUseExample.Uitls;
+using StripePractice.Data;
+using StripePractice.Models;
+using StripePractice.Services;
+using StripePractice.Uitls;
 
-namespace StripeUseExample.Controllers
+namespace StripePractice.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -714,6 +714,9 @@ namespace StripeUseExample.Controllers
                 // استخدم CalcAddonProrationWithDates للحصول على جميع التفاصيل المطلوبة
                 var (billableMonths, extraDays, backdateStart, billingAnchor) = 
                     ProratedAmountCalculator.CalcAddonProrationWithDates(subscriptionStartDate, anniversaryDate);
+
+                
+                var daysRemaining = (anniversaryDate - subscriptionStartDate).TotalDays + 1;
 
                 return Ok("Congratulations Prorated");
             }

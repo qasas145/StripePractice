@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace StripeUseExample.Controllers
+namespace StripePractice.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

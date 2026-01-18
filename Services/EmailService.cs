@@ -1,4 +1,4 @@
-﻿namespace StripeUseExample.Services
+﻿namespace StripePractice.Services
 {
     public class EmailService
     {
